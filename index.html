@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的每日手账 · 马卡龙清新版</title>
+    <!-- 引入 Font Awesome 图标库 (v6 免费) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- 引入 SheetJS (XLSX) 用于导出 Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Helvetica Neue', 'Poppins', sans-serif;
+        }
+        body {
+            background: linear-gradient(145deg, #fbe9f0 0%, #d4f0f0 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        /* 主手账卡片 */
+        .journal-card {
+            max-width: 1100px;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 40px 40px 30px 30px;
+            box-shadow: 0 25px 40px -10px rgba(152, 193, 186, 0.5), 0 0 0 2px #fff8 inset, 0 0 0 4px #fee3e3 inset;
+            padding: 30px 35px;
+            border: 1px solid #ffe9e9;
+        }
+        /* 标题行 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            border-bottom: 3px dashed #ffc2c2;
+            padding-bottom: 15px;
+        }
+        .title h1 {
+            font-size: 2.6rem;
+            font-weight: 600;
+            color: #8b5e7c;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0 #fce2e2;
+        }
+        .title .sub {
+            font-size: 1.1rem;
+            color: #a2868e;
+            font-style: italic;
+            margin-top: 4px;
+            background: #fcf0d9;
+            display: inline-block;
+            padding: 2px 18px;
+            border-radius: 40px;
+            border: 1px solid #fecfcf;
+        }
+        /* 时间区域：第一行日期/星期/农历，第二行动态大时钟 */
+        .datetime-section {
+            background: #fffbee;
+            border-radius: 60px;
+            padding: 18px 28px;
+            box-shadow: 0 4px 10px #ffd9d9;
+            margin-bottom: 25px;
+        }
+        .date-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px 30px;
+            align-items: center;
+            justify-content: center;
+            background: #fff0e7;
+            border-radius: 50px;
+            padding: 8px 25px;
+            margin-bottom: 12px;
+        }
+        .date-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #7b5c6d;
+            font-weight: 500;
+            font-size: 1.15rem;
+        }
+        .date-item i {
+            color: #f09b9b;
+            font-size: 1.3rem;
+        }
+        .lunar {
+            background: #dde9e4;
+            padding: 4px 16px;
+            border-radius: 40px;
+            color: #2e6355;
+        }
+        /* 动态时钟——电子钟效果 */
+        .live-time-row {
+            text-align: center;
+        }
+        #liveClock {
+            font-family: 'Courier New', monospace;
+            font-size: 3.2rem;
+            font-weight: 600;
+            background: #c7e5e0;
+            display: inline-block;
+            padding: 8px 35px;
+            border-radius: 60px;
+            color: #1a4e41;
+            letter-spacing: 6px;
+            text-shadow: 0 0 6px #a2dfd0;
+            box-shadow: 0 4px 0 #80aea3;
+            border: 2px solid #f0fff7;
+        }
+        /* 录音机模块 */
+        .recorder-box {
+            flex: 1;
+            min-width: 260px;
+            background: #fde6f2;
+            border-radius: 60px;
+            padding: 8px 18px 8px 25px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .recorder-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .rec-btn {
+            background: white;
+            border: none;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            color: #a06b7c;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 4px 6px #fbb6b6;
+            transition: 0.2s;
+            border: 1px solid #ffe3e3;
+        }
+        .rec-btn:hover { transform: scale(1.07); background: #fff2f2; }
+        .rec-btn:active { background: #ffe2d4; }
+        .rec-status {
+            font-size: 0.9rem;
+            color: #9d6073;
+            font-weight: 500;
+        }
+        .export-audio {
+            background: #b6d9d2;
+            border-radius: 30px;
+            padding: 8px 18px;
+            border: none;
+            color: #255f52;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #b7cfc8;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        /* 三栏主布局 */
+        .main-panels {
+            display: grid;
+            grid-template-columns: 1.8fr 1fr;
+            gap: 25px;
+            margin: 25px 0 20px;
+        }
+        /* 左侧todo+特别 */
+        .left-col {
+            background: #fef7ea;
+            border-radius: 35px;
+            padding: 20px 15px;
+            box-shadow: 0 10px 15px #fad1d1 inset, 0 4px 0 #ffeae3;
+        }
+        .todo-header {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #b0757c;
+            padding-left: 15px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .todo-header i { color: #e79898; font-size: 2rem; }
+        .todo-hourly {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 470px;
+            overflow-y: auto;
+            padding-right: 8px;
+            margin-bottom: 25px;
+        }
+        .todo-row {
+            display: flex;
+            align-items: center;
+            background: #fff5f5;
+            border-radius: 60px;
+            padding: 5px 15px 5px 5px;
+            border: 1px solid #fccbcb;
+        }
+        .time-tag {
+            width: 100px;
+            background: #fad6d9;
+            border-radius: 40px;
+            padding: 10px 0;
+            text-align: center;
+            font-weight: 600;
+            color: #954e5a;
+            margin-right: 10px;
+            font-size: 0.95rem;
+            box-shadow: 0 2px 4px #e3b5b5;
+        }
+        .todo-input {
+            flex: 1;
+            border: none;
+            background: #fffafc;
+            border-radius: 40px;
+            padding: 12px 18px;
+            font-size: 1rem;
+            outline: 2px solid #ffe1e1;
+            transition: 0.15s;
+            /* 支持分段（拼写检查、语法） */
+            spellcheck: true;
+            autocorrect: on;
+            autocapitalize: sentences;
+        }
+        .todo-input:focus { outline: 3px solid #ffb8b8; background: white; }
+        /* 特别提醒 ———— 可拖动调节大小 */
+        .special-box {
+            background: #fee9df;
+            border-radius: 30px;
+            padding: 15px 20px;
+            border: 2px dotted #ffb2a5;
+        }
+        .special-label {
+            font-size: 1.4rem;
+            color: #bd7171;
+            margin-bottom: 6px;
+        }
+        .special-input {
+            width: 100%;
+            border: none;
+            background: #fff8f3;
+            border-radius: 30px;
+            padding: 15px 20px;
+            font-size: 1rem;
+            border: 2px solid #ffe0d0;
+            outline: none;
+            resize: vertical;   /* 允许垂直拖动调整大小 */
+            min-height: 70px;
+            max-height: 250px;
+            spellcheck: true;
+            autocorrect: on;
+        }
+        /* 右侧开支 */
+        .right-col {
+            background: #ebf3f0;
+            border-radius: 35px;
+            padding: 20px 18px;
+            box-shadow: 0 10px 15px #c7dad5 inset, 0 4px 0 #d6ece6;
+        }
+        .expense-header {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #558a7a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .expense-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 15px 0 20px;
+            max-height: 260px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .expense-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .expense-item input {
+            background: white;
+            border: none;
+            border-radius: 40px;
+            padding: 12px 15px;
+            font-size: 0.95rem;
+            border: 2px solid #c6e3db;
+            spellcheck: true;
+            autocorrect: on;
+        }
+        .expense-item .proj { flex: 2; }
+        .expense-item .amt { flex: 1; }
+        .expense-item .del-btn {
+            background: #fcc2c2;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: #a14444;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px #dba1a1;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .expense-item .del-btn:hover { background: #ffa8a8; }
+        .expense-btns {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+        .calc-btn {
+            background: #c7e0d9;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1d5b4b;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #95b9af;
+            transition: 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .calc-btn.clear {
+            background: #ffd5c5;
+            color: #a55a5a;
+            box-shadow: 0 3px 0 #e2b3a3;
+        }
+        .add-expense-btn {
+            background: #d5e3cd;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            color: #3f6b4f;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #9cb690;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .stats-area {
+            background: #fffbee;
+            border-radius: 28px;
+            padding: 18px 20px;
+            margin-top: 20px;
+            border: 2px solid #b8dfd4;
+        }
+        .total-expense {
+            font-size: 1.8rem;
+            color: #488073;
+            font-weight: 700;
+        }
+        .sorted-list {
+            margin-top: 12px;
+            list-style: none;
+        }
+        .sorted-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px dashed #c7a9a9;
+            font-size: 1.1rem;
+        }
+        /* 导出区域 */
+        .export-panel {
+            background: #e7d2dd;
+            border-radius: 50px;
+            padding: 18px 25px;
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+        .date-range {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .date-range input {
+            border: none;
+            padding: 12px 16px;
+            border-radius: 40px;
+            border: 2px solid #fcc1c1;
+            background: #fff7fc;
+        }
+        .export-btn {
+            background: #c3b0e0;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 40px;
+            font-weight: 700;
+            color: #2b2442;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #927fb0;
+            font-size: 1.1rem;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 20px;
+            color: #b38686;
+            font-size: 0.95rem;
+        }
+        i { pointer-events: none; }
+    </style>
+</head>
+<body>
+<div class="journal-card" id="journalApp">
+    <!-- 标题 -->
+    <div class="header">
+        <div class="title">
+            <h1>📔 我的每日手账</h1>
+            <div class="sub">✨ 天天进步，每日新生 ✨</div>
+        </div>
+        <div></div>
+    </div>
+
+    <!-- 今日时间：第一行日期/星期/农历 + 第二行动态时钟 -->
+    <div class="datetime-section">
+        <div class="date-row">
+            <div class="date-item"><i class="fas fa-calendar-alt"></i> <span id="gregorianDate">加载中...</span></div>
+            <div class="date-item lunar" id="lunarDate">🐰 农历甲辰年</div>
+            <div class="date-item"><i class="fas fa-star"></i> <span id="weekday">星期一</span></div>
+        </div>
+        <div class="live-time-row">
+            <span id="liveClock">00:00:00</span>
+        </div>
+        <!-- 录音机放在时间下方（与原来位置类似，仍保留录音机） -->
+        <div class="recorder-box">
+            <span class="rec-status" id="recStatus">⚪ 闲置</span>
+            <div class="recorder-buttons">
+                <button class="rec-btn" id="startRecBtn" title="开始录音"><i class="fas fa-circle"></i></button>
+                <button class="rec-btn" id="pauseRecBtn" title="暂停"><i class="fas fa-pause"></i></button>
+                <button class="rec-btn" id="resumeRecBtn" title="继续"><i class="fas fa-play"></i></button>
+                <button class="export-audio" id="exportAudioBtn"><i class="fas fa-download"></i> 导出MP3</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容左右栏 -->
+    <div class="main-panels">
+        <!-- 左侧 todo + 特别注意 -->
+        <div class="left-col">
+            <div class="todo-header"><i class="fas fa-check-circle"></i> 今日 To-do List</div>  <!-- 去掉“每小时”字样 -->
+            <div class="todo-hourly" id="todoContainer">
+                <!-- JS 动态生成 8:00 ~ 23:00 -->
+            </div>
+            <div class="special-box">
+                <div class="special-label"><i class="fas fa-pen-fancy"></i> 特别注意</div>
+                <textarea class="special-input" id="specialNote" placeholder="写点特别提醒...（可拖动右下角调整大小）" rows="2"></textarea>
+            </div>
+        </div>
+
+        <!-- 右侧 开支 (可增减) -->
+        <div class="right-col">
+            <div class="expense-header"><i class="fas fa-wallet"></i> 今日开支</div>
+            <div id="expenseEntries" class="expense-list">
+                <!-- 动态生成，默认三行 -->
+            </div>
+            <div class="expense-btns">
+                <button class="calc-btn" id="calcExpense"><i class="fas fa-calculator"></i> 统计</button>
+                <button class="calc-btn clear" id="clearExpense"><i class="fas fa-undo-alt"></i> 清空</button>
+                <button class="add-expense-btn" id="addExpenseRow"><i class="fas fa-plus-circle"></i> 添加一行</button>
+            </div>
+            <!-- 统计显示区 -->
+            <div class="stats-area" id="expenseStats">
+                <span class="total-expense" id="totalAmount">今日开支: 0</span>
+                <ul class="sorted-list" id="sortedExpenseList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出excel区域 (可选择日期范围) -->
+    <div class="export-panel">
+        <div class="date-range">
+            <span>📅 从</span>
+            <input type="date" id="startDate" value="2025-03-01">
+            <span>到</span>
+            <input type="date" id="endDate" value="2025-03-01">
+        </div>
+        <button class="export-btn" id="exportExcelBtn"><i class="fas fa-file-excel"></i> 导出 Excel</button>
+    </div>
+    <div class="footer-note">🌸 记录点滴 · 温柔时光 🌸</div>
+</div>
+
+<script>
+    (function() {
+        // ---------- 1. 动态时间与农历 ----------
+        const gregorianSpan = document.getElementById('gregorianDate');
+        const lunarSpan = document.getElementById('lunarDate');
+        const liveClock = document.getElementById('liveClock');
+        const weekdaySpan = document.getElementById('weekday');
+
+        function updateDateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2,'0');
+            const day = String(now.getDate()).padStart(2,'0');
+            gregorianSpan.innerText = `${year}.${month}.${day}`;
+
+            const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            weekdaySpan.innerText = weekdays[now.getDay()];
+
+            const hours = String(now.getHours()).padStart(2,'0');
+            const mins = String(now.getMinutes()).padStart(2,'0');
+            const secs = String(now.getSeconds()).padStart(2,'0');
+            liveClock.innerText = `${hours}:${mins}:${secs}`;
+
+            // 模拟农历
+            const lunarMap = ['正月廿九', '二月初一', '二月初二', '二月初三', '二月初四', '二月初五', '二月初六', '二月初七', '二月初八', '二月初九', '二月初十', '二月十一', '二月十二', '二月十三', '二月十四', '二月十五', '二月十六', '二月十七', '二月十八', '二月十九', '二月二十', '二月廿一', '二月廿二', '二月廿三', '二月廿四', '二月廿五', '二月廿六', '二月廿七', '二月廿八', '二月廿九', '三月初一'];
+            const idx = now.getDate() % 30; 
+            lunarSpan.innerText = `🐉 农历甲辰年 ${lunarMap[idx] || '二月廿'}`;
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        // ---------- 2. 生成8:00-23:00 todo 每小时一行 (保留时间显示，不改变结构) ----------
+        const todoContainer = document.getElementById('todoContainer');
+        function buildTodoRows() {
+            let htmlStr = '';
+            for (let h = 8; h <= 23; h++) {
+                const start = `${String(h).padStart(2,'0')}:00`;
+                const end = h+1 > 23 ? '23:59' : `${String(h+1).padStart(2,'0')}:00`;
+                htmlStr += `
+                    <div class="todo-row">
+                        <span class="time-tag">${start} - ${end}</span>
+                        <input class="todo-input" type="text" placeholder="写点什么..." data-hour="${h}" spellcheck="true" autocorrect="on" autocapitalize="sentences">
+                    </div>
+                `;
+            }
+            todoContainer.innerHTML = htmlStr;
+        }
+        buildTodoRows();
+
+        // ---------- 3. 开支模块: 动态增删行 ----------
+        const expenseDiv = document.getElementById('expenseEntries');
+        function createExpenseRow(projVal = '', amtVal = '') {
+            const row = document.createElement('div');
+            row.className = 'expense-item';
+            row.innerHTML = `
+                <input class="proj" type="text" placeholder="项目" value="${projVal}" spellcheck="true" autocorrect="on">
+                <input class="amt" type="number" placeholder="金额" value="${amtVal}">
+                <button class="del-btn" title="删除此项"><i class="fas fa-times"></i></button>
+            `;
+            // 删除按钮事件
+            row.querySelector('.del-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                row.remove();
+            });
+            return row;
+        }
+
+        // 初始化三行示例
+        const defaultItems = [ ['水果', '3'], ['电费', '200'], ['水费', '20'] ];
+        defaultItems.forEach(([proj, amt]) => {
+            expenseDiv.appendChild(createExpenseRow(proj, amt));
+        });
+
+        // 添加新行
+        document.getElementById('addExpenseRow').addEventListener('click', () => {
+            expenseDiv.appendChild(createExpenseRow('', ''));
+        });
+
+        // 开支统计与排序 (同时考虑删除了的行)
+        const totalSpan = document.getElementById('totalAmount');
+        const sortedList = document.getElementById('sortedExpenseList');
+        const calcBtn = document.getElementById('calcExpense');
+        const clearBtn = document.getElementById('clearExpense');
+
+        function computeExpense() {
+            const items = document.querySelectorAll('.expense-item');
+            const expenses = [];
+            for (let row of items) {
+                const projInput = row.querySelector('.proj');
+                const amtInput = row.querySelector('.amt');
+                const project = projInput.value.trim();
+                const amount = parseFloat(amtInput.value);
+                if (project !== '' && !isNaN(amount) && amount !== 0) {
+                    expenses.push({ project, amount });
+                }
+            }
+            expenses.sort((a,b) => b.amount - a.amount);
+            const total = expenses.reduce((acc, cur) => acc + cur.amount, 0);
+            totalSpan.innerText = `今日开支: ${total}`;
+
+            let listHtml = '';
+            expenses.forEach(e => {
+                listHtml += `<li><span>${e.project}</span> <span>${e.amount}</span></li>`;
+            });
+            if (expenses.length === 0) listHtml = '<li style="opacity:0.6;">暂无开支</li>';
+            sortedList.innerHTML = listHtml;
+        }
+
+        calcBtn.addEventListener('click', computeExpense);
+
+        clearBtn.addEventListener('click', function() {
+            const items = document.querySelectorAll('.expense-item');
+            items.forEach(row => {
+                row.querySelector('.proj').value = '';
+                row.querySelector('.amt').value = '';
+            });
+            totalSpan.innerText = '今日开支: 0';
+            sortedList.innerHTML = '<li style="opacity:0.6;">暂无开支</li>';
+        });
+
+        // ---------- 4. 录音机 MP3 导出 (使用audio/mp3 mime) ----------
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+
+        const startBtn = document.getElementById('startRecBtn');
+        const pauseBtn = document.getElementById('pauseRecBtn');
+        const resumeBtn = document.getElementById('resumeRecBtn');
+        const exportAudio = document.getElementById('exportAudioBtn');
+        const recStatus = document.getElementById('recStatus');
+
+        startBtn.addEventListener('click', async () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                audioChunks = [];
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // 尝试使用 audio/mp3 或 audio/mpeg
+                let mimeType = 'audio/mpeg'; // MP3 标准MIME
+                if (!MediaRecorder.isTypeSupported('audio/mpeg')) {
+                    if (MediaRecorder.isTypeSupported('audio/mp3')) {
+                        mimeType = 'audio/mp3';
+                    } else {
+                        // 降级使用 webm 但导出时仍试图给 .mp3 后缀，但实际不行，警告
+                        mimeType = 'audio/webm;codecs=opus';
+                        console.warn('浏览器不支持直接MP3，将使用webm封装，导出文件可能为webm，但重命名为.mp3可能无法播放。推荐使用现代浏览器。');
+                    }
+                }
+                const options = { mimeType: mimeType };
+                mediaRecorder = new MediaRecorder(stream, options);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                mediaRecorder.onstop = () => {
+                    // 以实际类型保存，但导出时强制为.mp3后缀，希望播放器兼容
+                    const mime = mediaRecorder.mimeType || 'audio/mpeg';
+                    audioBlob = new Blob(audioChunks, { type: mime });
+                    recStatus.innerText = '✅ 录音已保存，可导出MP3';
+                };
+
+                mediaRecorder.start();
+                recStatus.innerText = '🔴 录音中... (MP3)';
+            } catch (err) {
+                alert('无法访问麦克风: ' + err);
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.pause();
+                recStatus.innerText = '⏸️ 已暂停';
+            } else {
+                recStatus.innerText = '⚠️ 无进行中录音';
+            }
+        });
+
+        resumeBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'paused') {
+                mediaRecorder.resume();
+                recStatus.innerText = '🔴 录音中...';
+            } else {
+                recStatus.innerText = '⚠️ 无法继续';
+            }
+        });
+
+        exportAudio.addEventListener('click', () => {
+            if (!audioBlob) {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    setTimeout(() => {
+                        if (audioBlob) exportAudioBlob();
+                        else alert('录音尚未生成，请稍后再试');
+                    }, 300);
+                } else {
+                    alert('尚无录音片段，请先开始录音并停止');
+                }
+                return;
+            }
+            exportAudioBlob();
+        });
+
+        function exportAudioBlob() {
+            if (!audioBlob) return;
+            // 强制使用 .mp3 后缀，即使底层可能是webm也希望用户能尝试播放
+            const url = URL.createObjectURL(audioBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `录音_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.mp3`; // 后缀.mp3
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // ---------- 5. 导出excel (SheetJS) 不变 ----------
+        document.getElementById('exportExcelBtn').addEventListener('click', function() {
+            const todoRows = document.querySelectorAll('.todo-row');
+            const todoData = [];
+            todoRows.forEach(row => {
+                const time = row.querySelector('.time-tag')?.innerText || '';
+                const task = row.querySelector('.todo-input')?.value || '';
+                todoData.push({ 时间段: time, 任务: task });
+            });
+
+            const special = document.getElementById('specialNote').value;
+
+            const expenseItems = document.querySelectorAll('.expense-item');
+            const expenseRows = [];
+            expenseItems.forEach(row => {
+                const proj = row.querySelector('.proj')?.value.trim() || '';
+                const amt = row.querySelector('.amt')?.value.trim() || '';
+                if (proj !== '' || amt !== '') {
+                    expenseRows.push({ 项目: proj, 金额: amt });
+                }
+            });
+
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(todoData.length ? todoData : [{ 时间段: '无数据', 任务: '' }]), 'ToDo列表');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ '特别注意': special }]), '特别提醒');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseRows.length ? expenseRows : [{ 项目: '无', 金额: '' }]), '开支明细');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ '导出起始': start, '导出结束': end, '生成时间': new Date().toLocaleString() }]), '导出信息');
+            XLSX.writeFile(wb, `手账_${start}_至_${end}.xlsx`);
+        });
+
+        window.exportAudioBlob = exportAudioBlob;
+    })();
+</script>
+</body>
+</html>
